@@ -45,10 +45,12 @@
         <option selected>Select an Algorithm</option>
         <option>BFS</option>
         <option>DFS</option>
+        <option>GBFS</option>
+        <option>AStar</option>
       </select>
       <ul class="navbar-nav">
         <li class="nav-item active">
-          <a class="nav-link" href="index.html" id="changePage"
+          <a class="nav-link" href="mainSorting.html" id="changePage"
             >Sorting Algorithms</a
           >
         </li>
@@ -56,9 +58,33 @@
     </nav>
 
     <!--buttons-->
-    <button id="barrierButton">Create Barrier</button>
-    <button id="startButton" onclick="start()">Start</button>
-    <button id="clearButton" onclick="restart()">Clear</button>
+    <label for="#xCoor">X-Coordinate</label>
+    <input
+      type="number"
+      id="xCoor"
+      min="0"
+      max="19"
+      value="0"
+      onchange="changeX(this.value)"
+    />
+    <label for="#xCoor">Y-Coordinate</label>
+    <input
+      type="number"
+      id="yCoor"
+      min="0"
+      max="19"
+      value="0"
+      onchange="changeY(this.value)"
+    />
+    <button type="button" id="barrierButton" value="Draw Barrier">
+      Draw Barrier
+    </button>
+    <button type="button" id="startButton" onclick="start()" value="Start">
+      Start
+    </button>
+    <button type="button" id="clearButton" onclick="restart()" value="Clear">
+      Clear
+    </button>
     <br />
 
     <!-- The canvas to display the graph -->

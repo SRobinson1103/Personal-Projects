@@ -5,17 +5,21 @@
 
 //A vertex class for the graph
 class vertex {
-  constructor(value, edges) {
+  constructor(value, manhattanDistance, depth, edges, x, y) {
     this.value = value;
     this.edges = edges;
+    this.depth = depth;
+    this.x = x;
+    this.y = y;
+    this.manhattanDistance = manhattanDistance;
   }
 }
 
 //Set up the canvas
 let myCanvas = document.getElementById("myCanvas");
 let ctx = myCanvas.getContext("2d");
-let width = (myCanvas.width = window.innerWidth);
-let height = (myCanvas.height = window.innerHeight);
+let width = (myCanvas.width = window.innerWidth - 100);
+let height = (myCanvas.height = window.innerHeight - 100);
 
 //The dimensions of the canvas
 const size = 20;
@@ -31,10 +35,10 @@ let rectWidth = width / size;
 let myAlgorithm = "none";
 
 //Starting and ending locations
-let startX = 4;
-let startY = 10;
-let endX = 16;
-let endY = 10;
+let startX = 0;
+let startY = 0;
+let endX = 2;
+let endY = 15;
 
 /**
  * Code to be run once the page is loaded.
@@ -54,9 +58,11 @@ $(document).ready(function (e) {
         posY = $(this).offset().top;
       let x = Math.floor((e.pageX - posX) / rectWidth);
       let y = Math.floor((e.pageY - posY) / rectHeight);
-      //barrier nodes will have a value of -1
-      myGraph[x + y * size].value = -1;
-      fillNode(x, y, "#FF0000");
+      if ((x != startX || y != startY) && (x != endX || y != endY)) {
+        //barrier nodes will have a value of -1
+        myGraph[x + y * size].value = -1;
+        fillNode(x, y, "#FF0000");
+      }
     });
   });
 
@@ -71,36 +77,25 @@ function buildGraph() {
   let theEdges;
   //Add edges to each node
   for (i = 0; i < size * size; i++) {
-    //vertex is on the top row and left column
-    if (i == 0) {
-      theEdges = [1, size];
-      //vertex is on the top row and right column
-    } else if (i == size - 1) {
-      theEdges = [size - 2, size * 2 - 1];
-      //vertex is on the bottom row and left column
-    } else if (i == size * size - size) {
-      theEdges = [i - size, i + 1];
-      //vertex is on the bottom row and right column
-    } else if (i == size * size - 1) {
-      theEdges = [i - size, i - 1];
-      //vertex is in the left column middle row
-    } else if (i % size == 0) {
-      theEdges = [i - size, i + 1, i + size];
-      //vertex is on the right column middle row
-    } else if (i % size == size - 1) {
-      theEdges = [i - size, i - 1, i + size];
-      //vertex is on the top row
-    } else if (i < size) {
-      theEdges = [i - 1, i + 1, i + size];
-      //vertex is on the bottom row
-    } else if (i >= size * size - size) {
-      theEdges = [i - size, i - 1, i + 1];
-      //vertex is not on a side
-    } else {
-      theEdges = [i - size, i - 1, i + 1, i + size];
+    theEdges = [];
+    //left
+    if (Math.abs(i - 1) % size < i % size) {
+      theEdges.push(i - 1);
+    }
+    //top
+    if (i - size >= 0) {
+      theEdges.push(i - size);
+    }
+    //right
+    if ((i + 1) % size > i % size) {
+      theEdges.push(i + 1);
+    }
+    //bottom
+    if (i + size < size * size) {
+      theEdges.push(i + size);
     }
     //add the vertex, empty nodes will have a value of 0
-    myGraph.push(new vertex(0, theEdges));
+    myGraph.push(new vertex(0, 0, 0, theEdges, i % size, Math.floor(i / size)));
   }
 }
 
@@ -108,16 +103,24 @@ function buildGraph() {
  * Initiate the search algorithm based on the user selection.
  */
 function start() {
-  //disable barrier function and start button
+  //disable buttons
   $("#myCanvas").off("click");
   $("#startButton").prop("disabled", true);
+  $("#barrierButton").prop("disabled", true);
+  $("#clearButton").prop("disabled", true);
   if (myAlgorithm == "BFS") {
     BFS();
   } else if (myAlgorithm == "DFS") {
-    DFS(startX + startY * size);
+    DFS();
+  } else if (myAlgorithm == "GBFS") {
+    GBFS();
+  } else if (myAlgorithm == "AStar") {
+    AStar();
   }
   //re-enable the start button
   $("#startButton").prop("disabled", false);
+  $("#barrierButton").prop("disabled", false);
+  $("#clearButton").prop("disabled", false);
 }
 
 /**
@@ -127,9 +130,47 @@ function restart() {
   //reset graph values
   for (i = 0; i < size * size; i++) {
     myGraph[i].value = 0;
+    myGraph[i].depth = 0;
+    myGraph[i].manhattanDistance = 0;
   }
   loadCanvas();
 }
+
+/**
+ *
+ */
+function changeY(y) {
+  startY = parseInt(y);
+  restart();
+}
+
+/**
+ *
+ */
+function changeX(x) {
+  startX = parseInt(x);
+  restart();
+}
+
+/**
+ * Get the selected algorithm from the dropdown menu.
+ * @param {*} theAlgorithm the user selected algorithm to use.
+ */
+function getAlgorithm(theAlgorithm) {
+  myAlgorithm = theAlgorithm;
+}
+
+/**
+ * http://www.sitepoint.com/delay-sleep/pause-wait/
+ * Allows sleeping.
+ */
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/******************************************************************
+ *                      Canvas Functions                          *
+ ******************************************************************/
 
 /**
  * Draw the starting canvas.
@@ -175,24 +216,17 @@ function drawLines() {
  */
 function fillNode(x, y, theColor) {
   ctx.fillStyle = theColor;
-  ctx.fillRect(x * rectWidth, y * rectHeight, rectWidth, rectHeight);
+  ctx.fillRect(
+    x * rectWidth + 1,
+    y * rectHeight + 1,
+    rectWidth - 2,
+    rectHeight - 2
+  );
 }
 
-/**
- * Get the selected algorithm from the dropdown menu.
- * @param {*} theAlgorithm the user selected algorithm to use.
- */
-function getAlgorithm(theAlgorithm) {
-  myAlgorithm = theAlgorithm;
-}
-
-/**
- * http://www.sitepoint.com/delay-sleep/pause-wait/
- * Allows sleeping.
- */
-function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
+/******************************************************************
+ *                      Search Algorithms                         *
+ ******************************************************************/
 
 /**
  * Perform the breadth first search algorithm.
@@ -201,21 +235,19 @@ async function BFS() {
   let theQueue = [];
   //Enqueue the starting node
   theQueue.push(startY * size + startX);
-
   let current;
+
   while (theQueue.length != 0) {
     //remove the next node in the queue and fill it in as black
     current = theQueue.shift();
 
     //break out of the search when the ending point is found
     if (myGraph[current].value == 2) {
-      fillNode(current % size, Math.floor(current / size), "#00FFFF");
+      fillNode(myGraph[current].x, myGraph[current].y, "#00FFFF");
       break;
     }
-    fillNode(current % size, Math.floor(current / size), "#000000");
-
-    //sleep to slow down the algorithm for user visualization
-    await sleep(25);
+    fillNode(myGraph[current].x, myGraph[current].y, "#000000");
+    await sleep(50);
 
     //for each edge of the current node, if it hasnt been visited add it to the queue
     for (i = 0; i < myGraph[current].edges.length; i++) {
@@ -231,44 +263,163 @@ async function BFS() {
 }
 
 /**
- * Another sleep function.
- * @param {*} milliseconds The number of miliseconds to sleep.
- * @reference https://stackoverflow.com/questions/16873323/javascript-sleep-wait-before-continuing
+ * Perform the depth first search algorithm.
  */
-function sleep2(milliseconds) {
-  var start = new Date().getTime();
-  for (var i = 0; i < 1e7; i++) {
-    if (new Date().getTime() - start > milliseconds) {
+async function DFS() {
+  let theStack = [];
+  //Enqueue the starting node
+  theStack.push(startY * size + startX);
+  myGraph[startY * size + startX].value = 0;
+  let current;
+
+  while (theStack.length != 0) {
+    //remove the next node in the stack and fill it in as black
+    current = theStack.pop();
+
+    if (myGraph[current].value == 1) {
+      continue;
+    }
+    //break out of the search when the ending point is found
+    if (myGraph[current].value == 2) {
+      fillNode(myGraph[current].x, myGraph[current].y, "#00FFFF");
       break;
+    }
+    myGraph[current].value = 1;
+    fillNode(myGraph[current].x, myGraph[current].y, "#000000");
+    await sleep(10);
+
+    //for each edge of the current node, if it hasnt been visited add it to the stack
+    for (i = 0; i < myGraph[current].edges.length; i++) {
+      let vert = myGraph[current].edges[i];
+      if (myGraph[vert].value == 0 || myGraph[vert].value == 2) {
+        theStack.push(vert);
+      }
     }
   }
 }
 
-//a global flag to indicate that the end vertex has been found
-let found = false;
-
 /**
- * Perform the depth first search algorithm.
+ *
  */
-async function DFS(vertex) {
-  //break from recursion when the end is reached
-  if (found == true) {
-    return;
-  }
-  //set the current vertex to 1 and fill it in
-  myGraph[vertex].value = 1;
-  fillNode(vertex % size, Math.floor(vertex / size), "#000000");
-  //recursively call DFS on each edge of the current vertex if it hasn't been visited
+async function GBFS() {
+  let priorityQueue = [];
+  //Enqueue the starting node
+  myGraph[startY * size + startX].manhattanDistance = Math.abs(
+    startX - endX + (startY - endY)
+  );
+  priorityQueue.push(startY * size + startX);
+  let current;
 
-  setTimeout(() => {
-    for (i = 0; i < myGraph[vertex].edges.length; i++) {
-      let current = myGraph[vertex].edges[i];
-      if (myGraph[current].value == 0) {
-        DFS(current);
-      } else if (myGraph[current].value == 2) {
-        fillNode(current % size, Math.floor(current / size), "#00FFFF");
-        found = true;
+  while (priorityQueue.length > 0) {
+    //remove the next node in the priority queue
+    current = priorityQueue.shift();
+
+    //break out of the search when the ending point is found
+    if (myGraph[current].value == 2) {
+      fillNode(myGraph[current].x, myGraph[current].y, "#00FFFF");
+      break;
+    }
+    fillNode(myGraph[current].x, myGraph[current].y, "#000000");
+    await sleep(50);
+
+    //for each edge of the current node, if it hasnt been visited add it to the priority queue and
+    //calculate the manhattan distance
+    for (i = 0; i < myGraph[current].edges.length; i++) {
+      let vert = myGraph[current].edges[i];
+      if (myGraph[vert].value == 0 || myGraph[vert].value == 2) {
+        myGraph[vert].manhattanDistance = Math.abs(
+          myGraph[vert].x - endX + (myGraph[vert].y - endY)
+        );
+        enqueuePQ(priorityQueue, vert, false);
+      }
+      //Mark as visited
+      if (myGraph[vert].value == 0) {
+        myGraph[vert].value = 1;
       }
     }
-  }, 100);
+  }
+}
+
+/**
+ *
+ */
+async function AStar() {
+  let priorityQueue = [];
+  //Enqueue the starting node
+  myGraph[startY * size + startX].manhattanDistance = Math.abs(
+    startX - endX + (startY - endY)
+  );
+  priorityQueue.push(startY * size + startX);
+  let current;
+
+  while (priorityQueue.length > 0) {
+    //remove the next node in the priority queue
+    current = priorityQueue.shift();
+    let md = myGraph[current].manhattanDistance;
+    let dep = myGraph[current].depth;
+    let total = md + dep;
+    console.log("md: " + md);
+    console.log("dep: " + dep);
+    console.log("total:" + total);
+    //break out of the search when the ending point is found
+    if (myGraph[current].value == 2) {
+      fillNode(myGraph[current].x, myGraph[current].y, "#00FFFF");
+      break;
+    }
+    fillNode(myGraph[current].x, myGraph[current].y, "#000000");
+    await sleep(50);
+
+    //for each edge of the current node, if it hasnt been visited add it to the priority queue and
+    //calculate the manhattan distance
+    let theDepth = myGraph[current].depth;
+    for (i = 0; i < myGraph[current].edges.length; i++) {
+      let vert = myGraph[current].edges[i];
+      if (myGraph[vert].value == 0 || myGraph[vert].value == 2) {
+        myGraph[vert].manhattanDistance = Math.abs(
+          myGraph[vert].x - endX + (myGraph[vert].y - endY)
+        );
+        myGraph[vert].depth = theDepth + 1;
+        enqueuePQ(priorityQueue, vert, true);
+      }
+      //Mark as visited
+      if (myGraph[vert].value == 0) {
+        myGraph[vert].value = 1;
+      }
+    }
+  }
+}
+
+/**
+ * Enqueue method to order items in a priority queue by their manhattan distance and depth.
+ * @param {*} list The priority queue.
+ * @param {*} item The item to add.
+ */
+function enqueuePQ(list, item, useDepth) {
+  let inserted = false;
+  if (useDepth) {
+    for (i = 0; i < list.length; i++) {
+      let pos = list[i];
+      if (
+        myGraph[item].manhattanDistance + myGraph[item].depth <
+        myGraph[pos].manhattanDistance + myGraph[pos].depth
+      ) {
+        list.splice(i, 0, item);
+        inserted = true;
+        break;
+      }
+    }
+  } else {
+    for (i = 0; i < list.length; i++) {
+      let pos = list[i];
+      if (myGraph[item].manhattanDistance < myGraph[pos].manhattanDistance) {
+        list.splice(i, 0, item);
+        inserted = true;
+        break;
+      }
+    }
+  }
+
+  if (!inserted) {
+    list.push(item);
+  }
 }
