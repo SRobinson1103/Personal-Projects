@@ -37,8 +37,8 @@ let myAlgorithm = "none";
 //Starting and ending locations
 let startX = 0;
 let startY = 0;
-let endX = 2;
-let endY = 15;
+let endX = 15;
+let endY = 10;
 
 /**
  * Code to be run once the page is loaded.
@@ -311,6 +311,10 @@ async function GBFS() {
   let current;
 
   while (priorityQueue.length > 0) {
+    for (i = 0; i < priorityQueue.length; i++) {
+      let m = myGraph[priorityQueue[i]].manhattanDistance;
+      console.log(m);
+    }
     //remove the next node in the priority queue
     current = priorityQueue.shift();
 
@@ -327,9 +331,8 @@ async function GBFS() {
     for (i = 0; i < myGraph[current].edges.length; i++) {
       let vert = myGraph[current].edges[i];
       if (myGraph[vert].value == 0 || myGraph[vert].value == 2) {
-        myGraph[vert].manhattanDistance = Math.abs(
-          myGraph[vert].x - endX + (myGraph[vert].y - endY)
-        );
+        myGraph[vert].manhattanDistance =
+          Math.abs(myGraph[vert].x - endX) + Math.abs(myGraph[vert].y - endY);
         enqueuePQ(priorityQueue, vert, false);
       }
       //Mark as visited
@@ -353,14 +356,16 @@ async function AStar() {
   let current;
 
   while (priorityQueue.length > 0) {
+    for (i = 0; i < priorityQueue.length; i++) {
+      let d = myGraph[priorityQueue[i]].depth;
+      let m = myGraph[priorityQueue[i]].manhattanDistance;
+      let total = m + d;
+      console.log(total);
+    }
+    console.log("------------------------------");
     //remove the next node in the priority queue
     current = priorityQueue.shift();
-    let md = myGraph[current].manhattanDistance;
-    let dep = myGraph[current].depth;
-    let total = md + dep;
-    console.log("md: " + md);
-    console.log("dep: " + dep);
-    console.log("total:" + total);
+
     //break out of the search when the ending point is found
     if (myGraph[current].value == 2) {
       fillNode(myGraph[current].x, myGraph[current].y, "#00FFFF");
@@ -375,10 +380,9 @@ async function AStar() {
     for (i = 0; i < myGraph[current].edges.length; i++) {
       let vert = myGraph[current].edges[i];
       if (myGraph[vert].value == 0 || myGraph[vert].value == 2) {
-        myGraph[vert].manhattanDistance = Math.abs(
-          myGraph[vert].x - endX + (myGraph[vert].y - endY)
-        );
-        myGraph[vert].depth = theDepth + 1;
+        myGraph[vert].manhattanDistance =
+          Math.abs(myGraph[vert].x - endX) + Math.abs(myGraph[vert].y - endY);
+        myGraph[vert].depth = theDepth + 0.5;
         enqueuePQ(priorityQueue, vert, true);
       }
       //Mark as visited
